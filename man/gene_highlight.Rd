@@ -21,7 +21,8 @@ A named character vector of category colors. When added to a
 ggplasmid plot, the plot is returned with an updated fill scale.
 }
 \description{
-Use this helper with the \code{gene_highlight} argument in \code{\link[=ggplasmid]{ggplasmid()}}, or add
-it to an existing plot with \code{+}, to override the color of one or more feature
-categories.
+Use this helper with the \code{gene_manual_fill} argument in
+\code{\link[=ggplasmid]{ggplasmid()}}, or add it to an existing plot with
+\code{+}, to override the fill of one or more feature categories.
+\code{gene_highlight} remains a compatibility alias in plotting functions.
 }

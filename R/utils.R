@@ -85,70 +85,37 @@ legend_position_is_vertical <- function(position) {
 legend_position_for_theme <- function(position) {
   switch(
     position,
-    left_top = "inside",
-    right_top = "inside",
-    left_bottom = "inside",
-    right_bottom = "inside",
+    left_top = "left",
+    left_bottom = "left",
+    right_top = "right",
+    right_bottom = "right",
     position
   )
 }
 
 legend_position_inside_for_theme <- function(position, label_bounds = NULL) {
-  inside_position <- switch(
-    position,
-    left_top = c(0, 1),
-    right_top = c(1, 1),
-    left_bottom = c(0, 0),
-    right_bottom = c(1, 0),
-    NULL
-  )
-  if (is.null(inside_position) || is.null(label_bounds) || !length(label_bounds)) {
-    return(inside_position)
-  }
-
-  bounds <- label_bounds[c("xmin", "xmax", "ymin", "ymax")]
-  if (any(!is.finite(bounds))) {
-    return(inside_position)
-  }
-
-  # Keep an envelope-based corner legend visible when outer labels extend
-  # beyond the panel boundary.
-  clamp_inside <- function(value) {
-    max(0.015, min(0.985, value))
-  }
-
-  switch(
-    position,
-    left_top = c(clamp_inside(bounds[["xmin"]]), clamp_inside(bounds[["ymax"]])),
-    right_top = c(clamp_inside(bounds[["xmax"]]), clamp_inside(bounds[["ymax"]])),
-    left_bottom = c(clamp_inside(bounds[["xmin"]]), clamp_inside(bounds[["ymin"]])),
-    right_bottom = c(clamp_inside(bounds[["xmax"]]), clamp_inside(bounds[["ymin"]])),
-    inside_position
-  )
+  # Corner positions use an outside side position with corner-specific
+  # justification; no legend is anchored inside the map panel.
+  NULL
 }
 
 legend_justification_for_theme <- function(position) {
   switch(
     position,
-    left_top = c(0, 1),
-    right_top = c(1, 1),
-    left_bottom = c(0, 0),
-    right_bottom = c(1, 0),
+    left_top = c(1, 1),
+    right_top = c(0, 1),
+    left_bottom = c(1, 0),
+    right_bottom = c(0, 0),
+    left = c(1, 0.5),
+    right = c(0, 0.5),
+    top = c(0.5, 0),
+    bottom = c(0.5, 1),
     "center"
   )
 }
 
 legend_box_justification_for_theme <- function(position) {
-  switch(
-    position,
-    right = "left",
-    left = "left",
-    left_top = "left",
-    left_bottom = "left",
-    right_top = "right",
-    right_bottom = "right",
-    "center"
-  )
+  "left"
 }
 
 validate_legend_columns <- function(columns = NULL, position = "bottom") {
@@ -175,7 +142,7 @@ validate_gc_legend_columns <- function(columns = NULL, position = "bottom") {
 
 validate_legend_plot_spacing <- function(spacing = NULL, position = "bottom") {
   if (is.null(spacing)) {
-    return(if (position %in% c("right", "left")) 3.0 else 0.35)
+    return(if (legend_position_is_vertical(position)) 3.0 else 0.35)
   }
   spacing <- as.numeric(spacing)
   if (length(spacing) != 1L || !is.finite(spacing) || spacing < 0) {

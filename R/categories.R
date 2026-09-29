@@ -41,9 +41,9 @@ ggplasmid_colors <- function(scheme = c("plasmid", "phage")) {
 
 #' Define category color highlights
 #'
-#' Use this helper with the `gene_highlight` argument in [ggplasmid()], or add
-#' it to an existing plot with `+`, to override the color of one or more feature
-#' categories.
+#' Use this helper with the `gene_manual_fill` argument in [ggplasmid()], or
+#' add it to an existing plot with `+`, to override one or more category fills.
+#' `gene_highlight` remains a compatibility alias in plotting functions.
 #'
 #' @param ... Named color values, for example
 #'   `"Antimicrobial resistance" = "#B2182B"`, or a data frame.
@@ -124,19 +124,28 @@ ggplot_add.ggplasmid_gene_highlight <- function(object, plot, object_name) {
   scheme <- style$category_scheme %||% "plasmid"
   base <- style$fill_colors %||% ggplasmid_resolve_colors(
     scheme = scheme,
-    palette = style$palette %||% "npg"
+    gene_palette = style$gene_palette %||% "npg",
+    gene_manual_fill = style$gene_manual_fill
   )
   highlight <- gene_highlight(highlight = unclass(object), scheme = scheme)
   base[names(highlight)] <- unname(highlight)
 
-  plot$scales$scales <- Filter(
-    function(scale) {
-      !"fill" %in% scale$aesthetics
-    },
-    plot$scales$scales
-  )
+  fill_scale_indices <- which(vapply(
+    plot$scales$scales,
+    function(scale) any(grepl("^fill($|_)", scale$aesthetics)),
+    logical(1L)
+  ))
+  gene_fill_aesthetic <- if (length(fill_scale_indices)) {
+    plot$scales$scales[[fill_scale_indices[[1L]]]]$aesthetics
+  } else {
+    "fill"
+  }
+  if (length(fill_scale_indices)) {
+    plot$scales$scales <- plot$scales$scales[-fill_scale_indices[[1L]]]
+  }
   plot <- plot +
     ggplot2::scale_fill_manual(
+      aesthetics = gene_fill_aesthetic,
       values = base,
       breaks = gene_legend_breaks(base),
       drop = TRUE,
@@ -146,7 +155,8 @@ ggplot_add.ggplasmid_gene_highlight <- function(object, plot, object_name) {
         ncol = style$legend_columns %||% 1L,
         byrow = TRUE,
         keyheight = grid::unit(0.34, "cm"),
-        keywidth = grid::unit(0.45, "cm")
+        keywidth = grid::unit(0.45, "cm"),
+        override.aes = list(colour = NA)
       )
     )
 
@@ -164,16 +174,16 @@ ggplasmid_palette_names <- function() {
 }
 
 ggplasmid_resolve_colors <- function(scheme = c("plasmid", "phage"),
-                                     palette = "npg",
-                                     gene_highlight = NULL) {
+                                     gene_palette = "npg",
+                                     gene_manual_fill = NULL) {
   scheme <- match.arg(scheme)
-  palette <- match.arg(palette, choices = ggplasmid_palette_names())
+  gene_palette <- match.arg(gene_palette, choices = ggplasmid_palette_names())
   base <- ggplasmid_colors(scheme)
 
-  pal_fun <- if (identical(palette, "npg")) {
+  pal_fun <- if (identical(gene_palette, "npg")) {
     ggsci::pal_npg
   } else {
-    getExportedValue("ggsci", paste0("pal_", palette))
+    getExportedValue("ggsci", paste0("pal_", gene_palette))
   }
   generated <- suppressWarnings(pal_fun()(length(base)))
   available <- generated[!is.na(generated) & nzchar(generated)]
@@ -187,10 +197,10 @@ ggplasmid_resolve_colors <- function(scheme = c("plasmid", "phage"),
   base <- stats::setNames(generated, names(base))
   base[c("GC skew+", "GC skew-")] <- c("#008000", "#7030A0")
 
-  if (!is.null(gene_highlight)) {
+  if (!is.null(gene_manual_fill)) {
     highlight <- do.call(
       "gene_highlight",
-      list(highlight = gene_highlight, scheme = scheme)
+      list(highlight = gene_manual_fill, scheme = scheme)
     )
     base[names(highlight)] <- unname(highlight)
   }

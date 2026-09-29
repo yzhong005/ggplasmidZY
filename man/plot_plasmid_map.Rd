@@ -20,7 +20,8 @@ plot_plasmid_map(
     "mobile_element"),
   label_mode = c("auto", "product", "gene"),
   category_scheme = c("plasmid", "phage"),
-  palette = "npg",
+  gene_palette = "npg",
+  gene_manual_fill = NULL,
   gene_highlight = NULL,
   rows = 4,
   genome_line_num = NULL,
@@ -54,8 +55,9 @@ plot_plasmid_map(
   show_ruler = TRUE,
   ruler_major_bp = NULL,
   ruler_minor_bp = NULL,
-  gene_radius = 1,
+  gene_radius = NULL,
   gene_height = NULL,
+  gene_color = "black",
   gene_linewidth = NULL,
   gene_border_linewidth = NULL,
   gene_arrow_head_bp = NULL,
@@ -136,13 +138,17 @@ product names, and \code{"gene"} prefers gene IDs.}
 
 \item{category_scheme}{Either \code{"plasmid"} or \code{"phage"}.}
 
-\item{palette}{Any palette name exposed by an exported
+\item{gene_palette}{Any palette name exposed by an exported
 \code{ggsci::pal_*} function. Examples include \code{"npg"},
 \code{"aaas"}, \code{"lancet"}, \code{"jco"}, \code{"locuszoom"}, and
 \code{"futurama"}.}
 
-\item{gene_highlight}{Optional named character vector, or data frame with
-category/color columns, used to override specific category colors.}
+\item{gene_manual_fill}{Optional named character vector, or data frame with
+category/color columns, used to override selected gene-category fill colors
+after applying \code{gene_palette}.}
+
+\item{gene_highlight}{Deprecated compatibility alias for
+\code{gene_manual_fill}.}
 
 \item{rows}{Number of rows for linear layout.}
 
@@ -255,7 +261,12 @@ when \code{layout = "circular"}.}
 in bp. When omitted, sensible values are chosen from genome length.}
 
 \item{gene_radius, gene_height}{Circular gene-ring radius and gene arrow
-height. For linear maps, \code{gene_height} controls arrow height.}
+height. When \code{gene_radius = NULL}, the circular gene ring is placed just
+outside the GC tracks or outermost BLAST ring. For linear maps,
+\code{gene_height} controls arrow height.}
+
+\item{gene_color}{Fixed outline color for gene arrows, independent of their
+category fill colors and the BLAST ring colors.}
 
 \item{gene_linewidth, gene_border_linewidth}{Outline width for gene arrows.
 \code{gene_border_linewidth} is a clearer alias; if supplied, it overrides
@@ -310,10 +321,10 @@ colours.}
 \item{legend_position}{Legend position passed to ggplot2, such as
 \code{"bottom"}, \code{"right"}, \code{"left"}, \code{"top"}, or
 \code{"none"}. Corner positions \code{"left_top"}, \code{"right_top"},
-\code{"left_bottom"}, and \code{"right_bottom"} use inside-plot positioning.
-For circular maps, each anchor follows the corresponding edge of the measured
-outer label envelope; with no labels, it falls back to the panel corner. Corner
-legends do not consume outside plot space.}
+\code{"left_bottom"}, and \code{"right_bottom"} use the corresponding outside
+side, aligned to the selected top or bottom corner. Side and corner guides are
+left-aligned. Corner legends reserve outside plot space, with additional spacing
+for labels extending beyond the panel.}
 
 \item{legend_columns}{Number of columns in the feature-category legend. When
 omitted, side and corner legends use one column, while top and bottom legends

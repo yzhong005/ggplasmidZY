@@ -1474,11 +1474,11 @@ auto_legend_plot_spacing <- function(spacing, position, label_bounds,
     right = max(0, unname(label_bounds[["xmax"]]) - 1),
     left = max(0, -unname(label_bounds[["xmin"]])),
     top = max(0, unname(label_bounds[["ymax"]]) - 1),
-    left_top = max(0, unname(label_bounds[["ymax"]]) - 1),
-    right_top = max(0, unname(label_bounds[["ymax"]]) - 1),
+    left_top = max(0, -unname(label_bounds[["xmin"]])),
+    right_top = max(0, unname(label_bounds[["xmax"]]) - 1),
     bottom = max(0, -unname(label_bounds[["ymin"]])),
-    left_bottom = max(0, -unname(label_bounds[["ymin"]])),
-    right_bottom = max(0, -unname(label_bounds[["ymin"]])),
+    left_bottom = max(0, -unname(label_bounds[["xmin"]])),
+    right_bottom = max(0, unname(label_bounds[["xmax"]]) - 1),
     0
   )
   if (!is.finite(overflow) || overflow <= 0) {
@@ -2350,10 +2350,14 @@ plot_circular_plasmid <- function(features, genome_length, name = NULL,
                                   show_ruler = TRUE,
                                   ruler_major_bp = NULL,
                                   ruler_minor_bp = NULL,
-                                  palette = "npg",
-                                  gene_highlight = NULL,
+                                  gene_palette = "npg",
+                                  gene_manual_fill = NULL,
+                                  blast_plot_data = NULL,
+                                  blast_radius = NULL,
+                                  blast_height = 0.08,
                                   gene_radius = 1,
                                   gene_height = 0.10,
+                                  gene_color = "black",
                                   gene_linewidth = 0.22,
                                   gene_border_linewidth = NULL,
                                   gene_arrow_head_bp = NULL,
@@ -2423,11 +2427,19 @@ plot_circular_plasmid <- function(features, genome_length, name = NULL,
   effective_legend_spacing_y <- if (corner_legend) 0.16 else 0.35
   plot_colors <- ggplasmid_resolve_colors(
     category_scheme,
-    palette = palette,
-    gene_highlight = gene_highlight
+    gene_palette = gene_palette,
+    gene_manual_fill = gene_manual_fill
   )
   feature_colors <- plot_colors[names(plot_colors) %in% unique(c(features$category, "GC skew+", "GC skew-"))]
   feature_breaks <- gene_legend_breaks(feature_colors)
+  blast_data <- if (is.null(blast_plot_data)) blast_plot_empty() else blast_plot_data$data
+  blast_colors <- if (is.null(blast_plot_data)) {
+    stats::setNames(character(), character())
+  } else {
+    blast_plot_data$colors
+  }
+  blast_breaks <- if (is.null(blast_plot_data)) character() else blast_plot_data$breaks
+  fill_colors <- feature_colors
   gc_colors <- gc_track_colors(plot_colors)
   gene_polys <- circular_gene_polygons(
     features,
@@ -2487,9 +2499,85 @@ plot_circular_plasmid <- function(features, genome_length, name = NULL,
     ggplot2::geom_polygon(
       data = gene_polys,
       ggplot2::aes(x = x, y = y, group = polygon_id, fill = category),
-      colour = "black",
+      colour = gene_color,
       linewidth = gene_linewidth
     )
+
+  p <- p + ggplot2::scale_fill_manual(
+    values = fill_colors,
+    breaks = feature_breaks,
+    name = NULL,
+    drop = TRUE,
+    na.value = "#999999",
+    guide = ggplot2::guide_legend(
+      order = 2,
+      ncol = legend_columns,
+      byrow = TRUE,
+      keyheight = grid::unit(effective_legend_key_height, "cm"),
+      keywidth = grid::unit(effective_legend_key_width, "cm"),
+      override.aes = list(colour = NA)
+    )
+  )
+
+  if (!is.null(blast_plot_data) && length(blast_plot_data$specs)) {
+    blast_ring_keys <- names(blast_plot_data$specs)[
+      order(blast_plot_data$order)
+    ]
+    p <- p + ggnewscale::new_scale_fill()
+    for (ring_index in seq_along(blast_ring_keys)) {
+      if (ring_index > 1L) {
+        p <- p + ggnewscale::new_scale_fill()
+      }
+      ring_key <- blast_ring_keys[[ring_index]]
+      ring_spec <- blast_plot_data$specs[[ring_key]]
+      ring_data <- blast_data[
+        !is.na(blast_data$ring_key) & blast_data$ring_key == ring_key,
+        , drop = FALSE
+      ]
+      identity_min <- blast_plot_data$identity_thresholds[[ring_key]]
+      gradient_min <- min(identity_min, 99.999)
+      identity_breaks <- if (identity_min >= 100) {
+        100
+      } else {
+        c(identity_min, 100)
+      }
+      identity_labels <- paste0(format(identity_breaks, trim = TRUE), "%")
+      p <- p +
+        ggplot2::geom_rect(
+          data = ring_data,
+          ggplot2::aes(
+            xmin = start,
+            xmax = end,
+            ymin = radius - blast_height / 2,
+            ymax = radius + blast_height / 2,
+            fill = pident
+          ),
+          inherit.aes = FALSE,
+          colour = NA,
+          alpha = 0.95,
+          show.legend = FALSE
+        ) +
+        ggplot2::scale_fill_gradient(
+          low = "#E2E2E2",
+          high = blast_plot_data$base_colors[[ring_key]],
+          limits = c(gradient_min, 100),
+          breaks = identity_breaks,
+          labels = identity_labels,
+          name = ring_spec$label,
+          guide = ggplot2::guide_colorbar(
+            order = 2L + ring_index,
+            direction = "horizontal",
+            reverse = TRUE,
+            title.position = "top",
+            label.position = "bottom",
+            barwidth = grid::unit(1.8, "cm"),
+            barheight = grid::unit(0.45, "cm"),
+            frame.colour = "grey30",
+            frame.linewidth = 0.4
+          )
+        )
+    }
+  }
 
   if (isTRUE(show_ruler)) {
     ruler <- circular_ruler_data(
@@ -2547,6 +2635,7 @@ plot_circular_plasmid <- function(features, genome_length, name = NULL,
   y_limit <- max(
     1.50,
     gene_radius + gene_height / 2 + 0.45,
+    if (nrow(blast_data)) max(blast_data$radius) + blast_height / 2 + 0.15 else 0,
     gc_skew_radius + gc_skew_height / 2 + 0.24,
     gc_content_radius + gc_content_height / 2 + 0.22,
     ruler_radius + ruler_major_tick + 0.18
@@ -2652,22 +2741,9 @@ plot_circular_plasmid <- function(features, genome_length, name = NULL,
     ) +
     ggplot2::scale_x_continuous(limits = c(0, genome_length), expand = c(0, 0)) +
     ggplot2::scale_y_continuous(limits = c(0, y_limit), expand = c(0, 0)) +
-    ggplot2::scale_fill_manual(
-      values = feature_colors,
-      breaks = feature_breaks,
-      drop = TRUE,
-      na.value = "#999999"
-    ) +
     gc_colour_scale +
-    ggplot2::labs(fill = NULL, colour = NULL) +
+    ggplot2::labs(colour = NULL) +
     ggplot2::guides(
-      fill = ggplot2::guide_legend(
-        order = 2,
-        ncol = legend_columns,
-        byrow = TRUE,
-        keyheight = grid::unit(effective_legend_key_height, "cm"),
-        keywidth = grid::unit(effective_legend_key_width, "cm")
-      ),
       colour = ggplot2::guide_legend(
         order = 1,
         ncol = gc_legend_columns,
@@ -2688,17 +2764,14 @@ plot_circular_plasmid <- function(features, genome_length, name = NULL,
       legend.justification = legend_justification_for_theme(legend_position),
       legend.box = "vertical",
       legend.box.just = legend_box_justification_for_theme(legend_position),
-      legend.box.spacing = grid::unit(
-        if (corner_legend) min(legend_plot_spacing, 0.16) else legend_plot_spacing,
-        "cm"
-      ),
+      legend.box.spacing = grid::unit(legend_plot_spacing, "cm"),
       legend.spacing.y = grid::unit(effective_legend_spacing_y, "cm"),
       legend.text = ggplot2::element_text(
         family = legend_font_family,
         face = "bold", size = effective_legend_text_size, colour = "black"
       ),
-      legend.background = ggplot2::element_rect(fill = "white", colour = NA),
-      legend.key = ggplot2::element_rect(fill = "white", colour = NA),
+      legend.background = ggplot2::element_blank(),
+      legend.key = ggplot2::element_blank(),
       legend.key.height = grid::unit(effective_legend_key_height, "cm"),
       legend.key.width = grid::unit(effective_legend_key_width, "cm"),
       plot.background = ggplot2::element_rect(fill = "white", colour = NA),
@@ -2709,9 +2782,12 @@ plot_circular_plasmid <- function(features, genome_length, name = NULL,
   attr(p, "ggplasmid_layout") <- "circular"
   attr(p, "ggplasmid_style") <- list(
     category_scheme = category_scheme,
-    palette = palette,
+    gene_palette = gene_palette,
     fill_colors = plot_colors,
     fill_breaks = feature_breaks,
+    blast_colors = blast_colors,
+    blast_breaks = blast_breaks,
+    blast_labels = if (is.null(blast_plot_data)) character() else blast_plot_data$labels,
     legend_columns = legend_columns,
     gc_legend_columns = gc_legend_columns,
     legend_plot_spacing = legend_plot_spacing
@@ -2726,9 +2802,10 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
                                 label_pattern = NULL, max_labels = Inf,
                                 label_min_gap_deg = 0,
                                 min_feature_bp = 1,
-                                palette = "npg",
-                                gene_highlight = NULL,
+                                gene_palette = "npg",
+                                gene_manual_fill = NULL,
                                 gene_height = 0.38,
+                                gene_color = "black",
                                 gene_linewidth = 0.24,
                                 gene_border_linewidth = NULL,
                                 gene_arrow_head_bp = NULL,
@@ -2795,8 +2872,8 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
   )
   plot_colors <- ggplasmid_resolve_colors(
     category_scheme,
-    palette = palette,
-    gene_highlight = gene_highlight
+    gene_palette = gene_palette,
+    gene_manual_fill = gene_manual_fill
   )
   feature_breaks <- gene_legend_breaks(plot_colors)
   gc_colors <- gc_track_colors(plot_colors)
@@ -2924,7 +3001,7 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
     ggplot2::geom_polygon(
       data = gene_polys,
       ggplot2::aes(x = x, y = y, group = polygon_id, fill = category),
-      colour = "black",
+      colour = gene_color,
       linewidth = gene_linewidth
     )
 
@@ -3190,8 +3267,8 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
         family = legend_font_family,
         face = "bold", size = legend_text_size, colour = "black"
       ),
-      legend.background = ggplot2::element_rect(fill = "white", colour = NA),
-      legend.key = ggplot2::element_rect(fill = "white", colour = NA),
+      legend.background = ggplot2::element_blank(),
+      legend.key = ggplot2::element_blank(),
       legend.key.height = grid::unit(0.30, "cm"),
       legend.key.width = grid::unit(0.45, "cm"),
       plot.background = ggplot2::element_rect(fill = "white", colour = NA),
@@ -3203,7 +3280,7 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
   attr(p, "ggplasmid_linear_label_summary") <- linear_label_summary
   attr(p, "ggplasmid_style") <- list(
     category_scheme = category_scheme,
-    palette = palette,
+    gene_palette = gene_palette,
     fill_colors = plot_colors,
     fill_breaks = feature_breaks,
     legend_columns = legend_columns,
@@ -3235,11 +3312,57 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
 #' @param label_mode `"auto"` prefers compact gene labels, `"product"` uses
 #'   product names, and `"gene"` prefers gene IDs.
 #' @param category_scheme Either `"plasmid"` or `"phage"`.
-#' @param palette Any palette name exposed by an exported `ggsci::pal_*`
+#' @param gene_palette Any palette name exposed by an exported `ggsci::pal_*`
 #'   function. Examples include `"npg"`, `"aaas"`, `"lancet"`, `"jco"`,
 #'   `"locuszoom"`, and `"futurama"`.
-#' @param gene_highlight Optional named character vector, or data frame with
-#'   category/color columns, used to override specific category colors.
+#' @param gene_manual_fill Optional named character vector, or data frame with
+#'   category/color columns, used to override selected gene-category fill
+#'   colors after applying `gene_palette`.
+#' @param gene_highlight Deprecated compatibility alias for
+#'   `gene_manual_fill`.
+#' @param blast_rings Optional list or data frame describing one or more BLAST
+#'   comparison rings. List entries use names such as ring1 and each contain
+#'   label and either a hits data frame or a sequence to BLAST against the
+#'   reference sequence from the map's GenBank/FASTA input. The data-frame form
+#'   has one row per ring and a list-column named hits or sequence. Per-ring
+#'   settings can override the shared BLAST mode and thresholds. Ring order
+#'   follows input order unless an order value is supplied. Each entry may
+#'   also set colour.
+#' @param blast_plotting_mode Shared BLAST display mode: hsp draws each
+#'   qualifying high-scoring pair, region consolidates overlapping hits into
+#'   identity-colored reference regions, and gene colors annotated features
+#'   whose BLAST coverage passes the threshold.
+#' @param blast_reference Which BLAST coordinate system is the map backbone:
+#'   "query" (the default, suitable when P0413 is supplied as query) or
+#'   "subject".
+#' @param blast_min_identity Shared minimum percent identity. For automatic
+#'   sequence comparisons it is passed directly to BLAST as `perc_identity`,
+#'   and it is also used to filter the hits before plotting. For supplied hit
+#'   tables it filters the existing hits only. If NULL, each ring uses a
+#'   mode-specific default: 0 for hsp, 90 for region, and 80 for gene. A ring
+#'   can override it with min_identity.
+#' @param blast_min_alignment_length Shared minimum aligned length in bp. A
+#'   ring can override it with min_alignment_length.
+#' @param blast_min_gene_coverage Shared minimum fraction of an annotated
+#'   feature covered in gene mode. A ring can override it with
+#'   min_gene_coverage.
+#' @param blast_palette One ggsci palette name used to assign distinct base
+#'   colors to rings in order. Each ring can override its color with colour.
+#'   Identity is shown as a continuous grey-to-ring-color gradient, with a
+#'   separate horizontal legend bar titled by the ring label. The bar spans
+#'   that ring's effective minimum identity through 100%.
+#' @param blast_color_manual Optional character vector with one manual color
+#'   per ring, in input order, or named by ring label. A ring-level colour
+#'   setting overrides this vector.
+#' @param blastn Optional path to the local NCBI BLAST+ blastn executable used
+#'   for automatic ring searches.
+#' @param blast_evalue,blast_args E-value and extra command-line arguments
+#'   used for each automatic BLAST search. The identity threshold is passed
+#'   from the shared or per-ring min_identity setting.
+#' @param blast_radius,blast_height,blast_spacing Base radius, thickness, and
+#'   spacing for the circular BLAST rings. By default, ring placement and
+#'   thickness are calculated to keep all BLAST rings between the GC tracks and
+#'   gene ring. Explicit dimensions that overlap those tracks produce an error.
 #' @param rows Number of rows for linear layout.
 #' @param genome_line_num,plot_line_num Aliases for `rows`. When supplied,
 #'   `genome_line_num` overrides `rows`, and `plot_line_num` overrides both.
@@ -3319,7 +3442,11 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
 #' @param ruler_major_bp,ruler_minor_bp Optional major/minor ruler tick spacing
 #'   in bp. When omitted, sensible values are chosen from genome length.
 #' @param gene_radius,gene_height Circular gene-ring radius and gene arrow
-#'   height. For linear maps, `gene_height` controls arrow height.
+#'   height. When `gene_radius = NULL`, the circular gene ring is placed just
+#'   outside the GC tracks or the outermost BLAST ring. For linear maps,
+#'   `gene_height` controls arrow height.
+#' @param gene_color Fixed outline color for gene arrows, independent of their
+#'   category fill colors and the BLAST ring colors.
 #' @param gene_linewidth,gene_border_linewidth Outline width for gene arrows.
 #'   `gene_border_linewidth` is a clearer alias; if supplied, it overrides
 #'   `gene_linewidth`.
@@ -3359,11 +3486,10 @@ plot_linear_plasmid <- function(features, genome_length, name = NULL, rows = 4,
 #' @param legend_position Legend position passed to ggplot2, such as
 #'   `"bottom"`, `"right"`, `"left"`, `"top"`, or `"none"`. Corner positions
 #'   `"left_top"`, `"right_top"`, `"left_bottom"`, and `"right_bottom"`
-#'   use ggplot2's inside-plot positioning. For circular maps, the anchor is
-#'   shifted to the measured outer label envelope so the legend edge follows
-#'   the outermost label text; with no labels it falls back to the panel corner.
-#'   The corner legends use one column by default and do not consume outside
-#'   plot space.
+#'   use outside side positions, aligned to the selected top or bottom corner.
+#'   Side and corner legends align their guide contents to the left.
+#'   Corner legends reserve outside plot space, with additional spacing for
+#'   labels extending beyond the panel. Circular BLAST maps default to `"right"`.
 #' @param legend_columns Number of columns in the feature-category legend. When
 #'   omitted, side and corner legends use one column, while top and bottom
 #'   legends use three columns.
@@ -3424,7 +3550,22 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
                       ),
                       label_mode = c("auto", "product", "gene"),
                       category_scheme = c("plasmid", "phage"),
-                      palette = "npg", gene_highlight = NULL,
+                      gene_palette = "npg", gene_manual_fill = NULL,
+                      gene_highlight = NULL,
+                      blast_rings = NULL,
+                      blast_plotting_mode = c("hsp", "region", "gene"),
+                      blast_reference = c("query", "subject"),
+                      blast_min_identity = NULL,
+                      blast_min_alignment_length = 1,
+                      blast_min_gene_coverage = 0.80,
+                      blast_palette = "npg",
+                      blast_color_manual = NULL,
+                      blastn = NULL,
+                      blast_evalue = 1e-10,
+                      blast_args = character(),
+                      blast_radius = NULL,
+                      blast_height = NULL,
+                      blast_spacing = 0.01,
                       rows = 4, genome_line_num = NULL, plot_line_num = NULL,
                       show_gc_skew = TRUE, show_labels = TRUE,
                       label_unknown = FALSE, label_pattern = NULL,
@@ -3451,8 +3592,9 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
                       min_feature_bp = 1,
                       show_ruler = TRUE,
                       ruler_major_bp = NULL, ruler_minor_bp = NULL,
-                      gene_radius = 1,
+                      gene_radius = NULL,
                       gene_height = NULL,
+                      gene_color = "black",
                       gene_linewidth = NULL,
                       gene_border_linewidth = NULL,
                       gene_arrow_head_bp = NULL,
@@ -3499,6 +3641,23 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
   phage_topology <- match.arg(phage_topology)
   label_mode <- match.arg(label_mode)
   category_scheme <- match.arg(category_scheme)
+  blast_plotting_mode <- match.arg(blast_plotting_mode)
+  blast_reference <- match.arg(blast_reference)
+  if (!is.null(gene_highlight)) {
+    if (!is.null(gene_manual_fill)) {
+      stop("Use only one of `gene_manual_fill` and the legacy `gene_highlight` argument.",
+           call. = FALSE)
+    }
+    warning(
+      "`gene_highlight` is retained for compatibility; use `gene_manual_fill` instead.",
+      call. = FALSE
+    )
+    gene_manual_fill <- gene_highlight
+  }
+  if (!is.null(blast_rings) && layout != "circular") {
+    stop("BLAST plotting is currently supported for circular layout only.",
+         call. = FALSE)
+  }
   if (!is.null(mini_label_line_length)) {
     label_line_length <- mini_label_line_length
   }
@@ -3537,6 +3696,12 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
     label_mode = label_mode,
     category_scheme = category_scheme
   )
+  backbone_sequence <- attr(features, "sequence", exact = TRUE) %||% ""
+  if ((!is.character(backbone_sequence) || !length(backbone_sequence) ||
+       !nzchar(backbone_sequence[[1L]])) &&
+      !is.null(fasta_data) && nrow(fasta_data)) {
+    backbone_sequence <- as.character(fasta_data$sequence[[1L]])
+  }
   full_genome_length <- attr(features, "genome_length", exact = TRUE)
   region <- resolve_plot_region(
     region_start = region_start,
@@ -3611,6 +3776,36 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
   if (is.null(gc_content_height)) {
     gc_content_height <- if (layout == "circular") 0.045 else 0.065
   }
+  ring_count <- if (is.data.frame(blast_rings)) {
+    nrow(blast_rings)
+  } else if (is.list(blast_rings)) {
+    length(blast_rings)
+  } else {
+    0L
+  }
+  if (layout == "circular" && (ring_count > 0L || is.null(gene_radius))) {
+    ring_geometry <- blast_ring_geometry(
+      n_rings = ring_count,
+      radius = blast_radius,
+      height = blast_height,
+      spacing = blast_spacing,
+      gene_radius = gene_radius,
+      gene_height = gene_height,
+      gc_skew_radius = gc_skew_radius,
+      gc_skew_height = gc_skew_height,
+      gc_content_radius = gc_content_radius,
+      gc_content_height = gc_content_height,
+      show_gc_skew = show_gc_skew,
+      ruler_radius = ruler_radius,
+      ruler_major_tick = ruler_major_tick
+    )
+    gene_radius <- ring_geometry$gene_radius
+    if (ring_count > 0L) {
+      blast_radius <- ring_geometry$radius
+      blast_height <- ring_geometry$height
+      blast_spacing <- ring_geometry$spacing
+    }
+  }
   if (is.null(gc_content_linewidth)) {
     gc_content_linewidth <- if (layout == "circular") 0.28 else 0.45
   }
@@ -3618,7 +3813,13 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
     label_text_size <- if (layout == "circular") 3.4 else 4.0
   }
   if (is.null(legend_position)) {
-    legend_position <- if (layout == "circular") "bottom" else "right"
+    legend_position <- if (layout == "circular" && !is.null(blast_rings)) {
+      "right"
+    } else if (layout == "circular") {
+      "bottom"
+    } else {
+      "right"
+    }
   }
   legend_columns <- validate_legend_columns(legend_columns, legend_position)
   gc_legend_columns <- validate_gc_legend_columns(gc_legend_columns, legend_position)
@@ -3633,6 +3834,30 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
       circular = layout == "circular",
       window = gc_window,
       step = gc_step
+    )
+  }
+
+  blast_data_for_plot <- NULL
+  if (!is.null(blast_rings)) {
+    blast_data_for_plot <- blast_prepare_rings_plot_data(
+      blast_rings = blast_rings,
+      mode = blast_plotting_mode,
+      reference = blast_reference,
+      genome_length = genome_length,
+      features = features,
+      min_identity = blast_min_identity,
+      min_alignment_length = blast_min_alignment_length,
+      min_gene_coverage = blast_min_gene_coverage,
+      palette = blast_palette,
+      radius = blast_radius,
+      height = blast_height,
+      spacing = blast_spacing,
+      coordinate_offset = if (isTRUE(region$active)) region$start - 1 else 0,
+      backbone_sequence = backbone_sequence,
+      blastn = blastn,
+      evalue = blast_evalue,
+      blast_args = blast_args,
+      color_manual = blast_color_manual
     )
   }
 
@@ -3664,10 +3889,14 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
       show_ruler = show_ruler,
       ruler_major_bp = ruler_major_bp,
       ruler_minor_bp = ruler_minor_bp,
-      palette = palette,
-      gene_highlight = gene_highlight,
+      gene_palette = gene_palette,
+      gene_manual_fill = gene_manual_fill,
+      blast_plot_data = blast_data_for_plot,
+      blast_radius = blast_radius,
+      blast_height = blast_height,
       gene_radius = gene_radius,
       gene_height = gene_height,
+      gene_color = gene_color,
       gene_linewidth = gene_linewidth,
       gene_border_linewidth = gene_border_linewidth,
       gene_arrow_head_bp = gene_arrow_head_bp,
@@ -3719,8 +3948,9 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
       max_labels = max_labels,
       label_min_gap_deg = label_min_gap_deg,
       min_feature_bp = min_feature_bp,
-      palette = palette,
-      gene_highlight = gene_highlight,
+      gene_palette = gene_palette,
+      gene_manual_fill = gene_manual_fill,
+      gene_color = gene_color,
       gene_height = gene_height,
       gene_linewidth = gene_linewidth,
       gene_border_linewidth = gene_border_linewidth,
@@ -3779,6 +4009,9 @@ ggplasmid <- function(annotation = NULL, gbk = NULL, fasta = NULL, skew_table = 
     genome_length = genome_length,
     name = name,
     region = region,
+    blast = blast_data_for_plot,
+    blast_plotting_mode = if (is.null(blast_data_for_plot)) NULL else blast_plotting_mode,
+    blast_reference = if (is.null(blast_data_for_plot)) NULL else blast_reference,
     linear_label_summary = attr(p, "ggplasmid_linear_label_summary", exact = TRUE)
   )
 
@@ -3965,7 +4198,22 @@ plot_phage_map <- function(annotation = NULL, gbk = NULL, fasta = NULL,
                              "rep_origin", "mobile_element"
                            ),
                            label_mode = c("auto", "product", "gene"),
-                           palette = "npg", gene_highlight = NULL,
+                           gene_palette = "npg", gene_manual_fill = NULL,
+                           gene_highlight = NULL,
+                           blast_rings = NULL,
+                           blast_plotting_mode = c("hsp", "region", "gene"),
+                           blast_reference = c("query", "subject"),
+                           blast_min_identity = NULL,
+                           blast_min_alignment_length = 1,
+                           blast_min_gene_coverage = 0.80,
+                           blast_palette = "npg",
+                           blast_color_manual = NULL,
+                           blastn = NULL,
+                           blast_evalue = 1e-10,
+                           blast_args = character(),
+                           blast_radius = NULL,
+                           blast_height = NULL,
+                           blast_spacing = 0.01,
                            rows = 4, genome_line_num = NULL, plot_line_num = NULL,
                            show_gc_skew = TRUE,
                            show_labels = TRUE,
@@ -3994,8 +4242,9 @@ plot_phage_map <- function(annotation = NULL, gbk = NULL, fasta = NULL,
                            label_adjust = NULL,
                            show_ruler = TRUE,
                            ruler_major_bp = NULL, ruler_minor_bp = NULL,
-                           gene_radius = 1,
+                           gene_radius = NULL,
                            gene_height = NULL,
+                           gene_color = "black",
                            gene_linewidth = NULL,
                            gene_border_linewidth = NULL,
                            gene_arrow_head_bp = NULL,
@@ -4053,8 +4302,23 @@ plot_phage_map <- function(annotation = NULL, gbk = NULL, fasta = NULL,
     feature_types = feature_types,
     label_mode = match.arg(label_mode),
     category_scheme = "phage",
-    palette = palette,
+    gene_palette = gene_palette,
+    gene_manual_fill = gene_manual_fill,
     gene_highlight = gene_highlight,
+    blast_rings = blast_rings,
+    blast_plotting_mode = match.arg(blast_plotting_mode),
+    blast_reference = match.arg(blast_reference),
+    blast_min_identity = blast_min_identity,
+    blast_min_alignment_length = blast_min_alignment_length,
+    blast_min_gene_coverage = blast_min_gene_coverage,
+    blast_palette = blast_palette,
+    blast_color_manual = blast_color_manual,
+    blastn = blastn,
+    blast_evalue = blast_evalue,
+    blast_args = blast_args,
+    blast_radius = blast_radius,
+    blast_height = blast_height,
+    blast_spacing = blast_spacing,
     rows = rows,
     genome_line_num = genome_line_num,
     plot_line_num = plot_line_num,
@@ -4091,6 +4355,7 @@ plot_phage_map <- function(annotation = NULL, gbk = NULL, fasta = NULL,
     ruler_minor_bp = ruler_minor_bp,
     gene_radius = gene_radius,
     gene_height = gene_height,
+    gene_color = gene_color,
     gene_linewidth = gene_linewidth,
     gene_border_linewidth = gene_border_linewidth,
     gene_arrow_head_bp = gene_arrow_head_bp,

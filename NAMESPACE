@@ -1,5 +1,6 @@
 S3method(ggplot2::ggplot_add,ggplasmid_gene_highlight)
 export(compute_gc_skew)
+export(blast_pairwise)
 export(format_plasmid_fasta)
 export(gene_highlight)
 export(ggplasmid)
