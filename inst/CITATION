@@ -2,7 +2,10 @@ citHeader("If you use ggplasmidZY in your research, please cite:")
 
 bibentry(
   bibtype = "Manual",
-  title = paste0("ggplasmidZY: ", meta$Title),
+  title = paste(
+    "ggplasmidZY: An All-in-One R Package for Plasmid and Bacteriophage",
+    "Genome Visualization"
+  ),
   author = person(given = "Yang", family = "Zhong"),
   year = "2026",
   note = paste("R package version", meta$Version),

@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use ggplasmidZY in your research, please cite this software."
 type: software
-title: "ggplasmidZY: Plasmid and Bacteriophage Genome Visualization with 'ggplot2'"
+title: "ggplasmidZY: An All-in-One R Package for Plasmid and Bacteriophage Genome Visualization"
 authors:
   - family-names: "Zhong"
     given-names: "Yang"
@@ -11,7 +11,7 @@ repository-code: "https://github.com/yzhong005/ggplasmidZY"
 license: MIT
 preferred-citation:
   type: software
-  title: "ggplasmidZY: Plasmid and Bacteriophage Genome Visualization with 'ggplot2'"
+  title: "ggplasmidZY: An All-in-One R Package for Plasmid and Bacteriophage Genome Visualization"
   authors:
     - family-names: "Zhong"
       given-names: "Yang"

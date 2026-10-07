@@ -1,5 +1,5 @@
 Package: ggplasmidZY
-Title: Plasmid and Bacteriophage Genome Visualization with 'ggplot2'
+Title: All-in-One Plasmid and Bacteriophage Genome Visualization
 Version: 0.1.1
 Authors@R: c(
     person("Yang", "Zhong", role = c("aut", "cre"), email = "yzhong005@e.ntu.edu.sg")

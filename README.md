@@ -389,8 +389,8 @@ a linear map.
 
 If you use `ggplasmidZY` in your research, please cite the software:
 
-Zhong, Y. (2026). *ggplasmidZY: Plasmid and Bacteriophage Genome Visualization with
-'ggplot2'* (version 0.1.1) [R package].
+Zhong, Y. (2026). *ggplasmidZY: An All-in-One R Package for Plasmid and
+Bacteriophage Genome Visualization* (version 0.1.1) [R package].
 [GitHub repository](https://github.com/yzhong005/ggplasmidZY).
 
 After installing the version containing the citation metadata, retrieve the
