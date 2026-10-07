@@ -1,8 +1,9 @@
 # ggplasmidZY
 
-`ggplasmidZY` is an R package for creating publication-quality genetic maps of
-plasmids and bacteriophages. Built within the `ggplot2` framework, it supports
-both circular and linear visualization of annotated genetic features.
+`ggplasmidZY` is an all-in-one R package for plotting plasmid and bacteriophage
+genomes. Built within the `ggplot2` framework, it combines circular and
+multi-line linear maps, annotated gene arrows, GC content, GC skew, and BLAST
+comparison rings in a single workflow for creating publication-quality figures.
 
 The package provides automated label placement to minimize label overlap,
 together with flexible user-defined controls for label positions, connector
@@ -15,6 +16,12 @@ For bacteriophage genomes, `ggplasmidZY` supports both circular and linear maps
 and provides an optional terminal-boundary marker when a linear genome is
 displayed using a circular layout. The package also supports named color
 palettes from `ggsci`.
+
+BLAST comparison rings display nucleotide similarity against other sequences
+on a circular map. Use precomputed hits or run automatic pairwise searches
+with a separately installed NCBI BLAST+ `blastn` executable. See the
+[BLAST comparison rings wiki page](https://github.com/yzhong005/ggplasmidZY/wiki/BLAST-comparison-rings)
+for input formats, display modes, identity thresholds, and ring styling.
 
 The main plotting function is `ggplasmid()`. It returns a standard `ggplot`
 object, allowing users to add additional layers, themes, titles, and scales
@@ -382,7 +389,7 @@ a linear map.
 
 If you use `ggplasmidZY` in your research, please cite the software:
 
-Zhong, Y. (2026). *ggplasmidZY: Plasmid-First Linear and Circular Maps with
+Zhong, Y. (2026). *ggplasmidZY: Plasmid and Bacteriophage Genome Visualization with
 'ggplot2'* (version 0.1.1) [R package].
 [GitHub repository](https://github.com/yzhong005/ggplasmidZY).
 

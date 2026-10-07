@@ -1,21 +1,22 @@
 Package: ggplasmidZY
-Title: Plasmid-First Linear and Circular Maps with 'ggplot2'
+Title: Plasmid and Bacteriophage Genome Visualization with 'ggplot2'
 Version: 0.1.1
 Authors@R: c(
     person("Yang", "Zhong", role = c("aut", "cre"), email = "yzhong005@e.ntu.edu.sg")
   )
 Author: Yang Zhong [aut, cre]
 Maintainer: Yang Zhong <yzhong005@e.ntu.edu.sg>
-Description: Generate publication-quality genetic maps, with particular
-    suitability for plasmids and bacteriophages. Built entirely within the
-    'ggplot2' framework, ggplasmidZY supports both circular and linear plotting of
-    annotated genetic features. Its intelligent label-placement algorithm
-    automatically minimizes label overlap, making it effective for densely
-    annotated multidrug-resistant plasmids containing numerous resistance genes,
-    mobile genetic elements, and other labeled features. It can also plot
-    circular or linear bacteriophage genome maps, including a terminal marker
-    option for linear phage genomes. The package provides a curated catalogue of
-    named color palettes from 'ggsci'.
+Description: An integrated toolkit for visualizing plasmid and bacteriophage
+    genomes using 'ggplot2'. Combines circular and multi-line linear maps,
+    annotated gene arrows, GC-content and GC-skew tracks, and nucleotide
+    similarity comparison rings in a single plotting workflow. Provides
+    automatic label placement and user-defined controls for labels, connector
+    lines, colors, legends, and track geometry. Supports GenBank, FASTA, and
+    annotation-table inputs, named palettes from 'ggsci', and an optional
+    terminal-boundary marker for linear bacteriophage genomes displayed as
+    circular maps. Comparison rings accept precomputed BLAST hits or run
+    pairwise searches using a separately installed NCBI BLAST+ executable.
+    Returns standard 'ggplot2' objects for further customization and export.
 License: MIT + file LICENSE
 URL: https://github.com/yzhong005/ggplasmidZY
 BugReports: https://github.com/yzhong005/ggplasmidZY/issues
