@@ -2,10 +2,10 @@ Package: ggplasmidZY
 Title: Plasmid-First Linear and Circular Maps with 'ggplot2'
 Version: 0.1.1
 Authors@R: c(
-    person("Zhong", "Yang", role = c("aut", "cre"), email = "yzhong005@e.ntu.edu.sg")
+    person("Yang", "Zhong", role = c("aut", "cre"), email = "yzhong005@e.ntu.edu.sg")
   )
-Author: Zhong Yang [aut, cre]
-Maintainer: Zhong Yang <yzhong005@e.ntu.edu.sg>
+Author: Yang Zhong [aut, cre]
+Maintainer: Yang Zhong <yzhong005@e.ntu.edu.sg>
 Description: Generate publication-quality genetic maps, with particular
     suitability for plasmids and bacteriophages. Built entirely within the
     'ggplot2' framework, ggplasmidZY supports both circular and linear plotting of

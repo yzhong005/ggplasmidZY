@@ -377,3 +377,23 @@ The `phage_topology = "linear"` option affects only the circular layout. It
 adds a terminal-boundary marker at the point where the linear genome is
 represented as a circular display. It does not convert the visualization into
 a linear map.
+
+## Citation
+
+If you use `ggplasmidZY` in your research, please cite the software:
+
+Zhong, Y. (2026). *ggplasmidZY: Plasmid-First Linear and Circular Maps with
+'ggplot2'* (version 0.1.1) [R package].
+[GitHub repository](https://github.com/yzhong005/ggplasmidZY).
+
+After installing the version containing the citation metadata, retrieve the
+citation and its BibTeX entry in R:
+
+```r
+citation("ggplasmidZY")
+toBibtex(citation("ggplasmidZY"))
+```
+
+The repository's **Cite this repository** button also provides citation
+downloads using [CITATION.cff](CITATION.cff). When using a development version,
+record the Git commit as well as the package version for reproducibility.

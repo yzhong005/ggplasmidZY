@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use ggplasmidZY in your research, please cite this software."
+type: software
+title: "ggplasmidZY: Plasmid-First Linear and Circular Maps with 'ggplot2'"
+authors:
+  - family-names: "Zhong"
+    given-names: "Yang"
+version: "0.1.1"
+url: "https://github.com/yzhong005/ggplasmidZY"
+repository-code: "https://github.com/yzhong005/ggplasmidZY"
+license: MIT
+preferred-citation:
+  type: software
+  title: "ggplasmidZY: Plasmid-First Linear and Circular Maps with 'ggplot2'"
+  authors:
+    - family-names: "Zhong"
+      given-names: "Yang"
+  year: 2026
+  version: "0.1.1"
+  url: "https://github.com/yzhong005/ggplasmidZY"

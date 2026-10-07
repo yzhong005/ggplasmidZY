@@ -9,3 +9,4 @@
 ^\.\.Rcheck$
 ^[^/]+[.]tar[.]gz$
 ^[^/]+[.]png$
+^CITATION[.]cff$

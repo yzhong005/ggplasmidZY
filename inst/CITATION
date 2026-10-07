@@ -1,0 +1,10 @@
+citHeader("If you use ggplasmidZY in your research, please cite:")
+
+bibentry(
+  bibtype = "Manual",
+  title = paste0("ggplasmidZY: ", meta$Title),
+  author = person(given = "Yang", family = "Zhong"),
+  year = "2026",
+  note = paste("R package version", meta$Version),
+  url = "https://github.com/yzhong005/ggplasmidZY"
+)
